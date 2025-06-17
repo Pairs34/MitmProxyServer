@@ -22,8 +22,8 @@ class Modifier:
             "https://mobileapi.hepsiburada.com/api/CartItemCount",
             "https://mobileapi.hepsiburada.com/api/AddCartItems",
             "https://app.adjust.com/event",
-            # "https://checkout.hepsiburada.com/mobile/api/v1/basket/all",
-            # "https://checkout.hepsiburada.com/mobile/api/v2/checkout/getcheckout?isFirstLoad=true"
+            "https://checkout.hepsiburada.com/mobile/api/v1/basket/all",
+            "https://checkout.hepsiburada.com/mobile/api/v2/checkout/getcheckout?isFirstLoad=true"
         ]
 
     def is_target_domain(self, url: str) -> bool:
