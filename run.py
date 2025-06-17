@@ -1,12 +1,18 @@
 from mitmproxy.tools.main import mitmweb
 
 def run_mitm_script():
+    proxy_host = "154.194.35.243"
+    proxy_port = 7885
+    proxy_user = "bCAfsgFwDf"
+    proxy_pass = "I5QD2zZp01"
+
     mitmweb([
-        "-s", "main.py",           # senin scriptin
-        # "--mode", "socks5",        # SOCKS5 proxy modu
-        "--listen-port", "8888",   # proxy portu
-        "--web-port", "8081",      # web arayüz portu (default 8081)
-        "--set", "web_open_browser=true"  # tarayıcıyı otomatik açmak istersen
+        "-s", "main.py",        
+        "--listen-port", "8888",
+        "--web-port", "8081",
+        # "--mode", f"upstream:http://{proxy_host}:{proxy_port}",
+        # "--set", f"upstream_auth={proxy_user}:{proxy_pass}"
     ])
 
-run_mitm_script()
+if __name__ == '__main__':
+    run_mitm_script()

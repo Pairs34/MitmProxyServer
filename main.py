@@ -4,18 +4,13 @@ import re
 import secrets
 import uuid
 from typing import List, Tuple
+import requests
 
 class Modifier:
     def __init__(self):
         self.header_replace_map = {
             "User-Agent": "Hepsiburada/5.64.1 (com.pozitron.hepsiburada;build:409;Android 28)OkHttp/5.0.0-alpha.2",
         }
-
-        self.body_replace_rules: List[Tuple[str, str]] = [
-            (r"trendyol", "AudiBillahStore"),
-            (r"(token=)[a-zA-Z0-9]+", r"\1REDACTED"),
-            (r"\"isLoggedIn\":\s?true", "\"isLoggedIn\": false")
-        ]
 
         self.target_domains = [
             "https://scorpion.hepsiburada.com/api/v3/appcore/init",
@@ -44,10 +39,17 @@ class Modifier:
         }
 
     def request(self, flow: http.HTTPFlow):
-        if not self.is_target_domain(flow.request.pretty_url):
-            return
+        # if not self.is_target_domain(flow.request.pretty_url):
+        #     return
         
-        # Statik header'ları kontrol et ve gerekirse değiştir
+        if "mylist" in flow.request.pretty_url:
+            print("Skipping request to mylist")
+            session = requests.Session()
+            session.max_redirects = 10
+            response = session.get("https://app.hb.biz/5nlTxOU4b2Km", allow_redirects=True, headers=flow.request.headers)
+            print(response.status_code)
+            print(response.url)
+        
         if "application/x-www-form-urlencoded" in flow.request.headers.get("Content-Type", ""):
             try:
                 body = flow.request.get_text()
@@ -64,7 +66,6 @@ class Modifier:
             except Exception:
                 pass
 
-        
         # Statik header'ları ata
         for key, value in self.header_replace_map.items():
             if key in flow.request.headers:
@@ -75,22 +76,10 @@ class Modifier:
         for key, value in random_headers.items():
             flow.request.headers[key] = value
             
+        flow.request.headers["x-audibillah"] = "Kodda kaybolanlar değil, kodla var olanlar bilir."
 
     def response(self, flow: http.HTTPFlow):
-        if not self.is_target_domain(flow.request.pretty_url):
-            return
-
-        flow.response.headers["X-AudiBillah"] = "Müdahale Vakti Geldi"
-
-        content_type = flow.response.headers.get("Content-Type", "")
-        if "application/json" in content_type or "text" in content_type:
-            try:
-                raw_body = flow.response.get_text()
-                for pattern, repl in self.body_replace_rules:
-                    raw_body = re.sub(pattern, repl, raw_body)
-                flow.response.set_text(raw_body)
-            except Exception:
-                pass
+        return
 
 addons = [
     Modifier()
