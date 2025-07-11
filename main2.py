@@ -1,10 +1,10 @@
 from urllib.parse import parse_qs, urlencode
-from mitmproxy import http
+from mitmproxy import http, ctx
 import re
 import secrets
 import uuid
 from typing import List, Tuple
-import requests
+
 
 class Modifier:
     def __init__(self):
@@ -20,6 +20,9 @@ class Modifier:
             "https://checkout.hepsiburada.com/mobile/api/v1/basket/all",
             "https://checkout.hepsiburada.com/mobile/api/v2/checkout/getcheckout?isFirstLoad=true"
         ]
+
+        # MyList yönlendirmeleri için depolama
+        self.mylist_redirects = {}
 
     def is_target_domain(self, url: str) -> bool:
         for domain in self.target_domains:
@@ -39,47 +42,52 @@ class Modifier:
         }
 
     def request(self, flow: http.HTTPFlow):
-        # if not self.is_target_domain(flow.request.pretty_url):
-        #     return
-        
-        if "mylist" in flow.request.pretty_url:
-            print("Skipping request to mylist")
-            session = requests.Session()
-            session.max_redirects = 10
-            response = session.get("https://app.hb.biz/5nlTxOU4b2Km", allow_redirects=True, headers=flow.request.headers)
-            print(response.status_code)
-            print(response.url)
-        
         if "application/x-www-form-urlencoded" in flow.request.headers.get("Content-Type", ""):
             try:
                 body = flow.request.get_text()
                 form_data = parse_qs(body)
 
-                # 🔧 Örnek değişiklikler
                 if "package_name" in form_data:
                     form_data["package_name"] = ["com.pozitron.hepsiburada"]
 
-                # Encode edip tekrar yaz
                 new_body = urlencode(form_data, doseq=True)
                 flow.request.set_text(new_body)
 
             except Exception:
                 pass
 
-        # Statik header'ları ata
         for key, value in self.header_replace_map.items():
             if key in flow.request.headers:
                 flow.request.headers[key] = value
 
-        # Dinamik kimlik header'larını ata
         random_headers = self.generate_device_headers()
         for key, value in random_headers.items():
             flow.request.headers[key] = value
-            
+
         flow.request.headers["x-audibillah"] = "Kodda kaybolanlar değil, kodla var olanlar bilir."
 
     def response(self, flow: http.HTTPFlow):
-        return
+        flow_id = id(flow)
+
+        if flow_id in self.mylist_redirects:
+            if "app.hb.biz" in flow.request.pretty_host and flow.response.status_code in [301, 302, 303, 307, 308]:
+                ctx.log.info("app.hb.biz redirect yapıyor, devam ediliyor...")
+                return
+
+            if "hepsiburada.com" in flow.request.pretty_host:
+                original_url = self.mylist_redirects[flow_id]
+
+                ctx.log.info(f"Orijinal MyList URL'ye yönlendiriliyor: {original_url}")
+
+                flow.response = http.Response.make(
+                    302,
+                    b"",
+                    {"Location": original_url}
+                )
+
+                # Temizle
+                del self.mylist_redirects[flow_id]
+
 
 addons = [
     Modifier()
